@@ -1,0 +1,132 @@
+﻿const express = require('express');
+const mysql = require('mysql2');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '0205',
+  database: 'sistema_pedidos'
+});
+
+db.connect((err) => {
+  if (err) {
+    console.error('❌ Erro MySQL:', err.message);
+    return;
+  }
+  console.log('✅ Conectado ao MySQL');
+});
+
+app.get('/', (req, res) => {
+  res.json({ status: 'online', mensagem: 'API funcionando!' });
+});
+
+// USUÁRIOS
+app.get('/usuarios', (req, res) => {
+  db.query('SELECT id, nome, email FROM usuarios', (error, results) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(results);
+  });
+});
+
+app.post('/usuarios', (req, res) => {
+  const { nome, email, senha } = req.body;
+  const sql = 'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)';
+  db.query(sql, [nome, email, senha], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: result.insertId, mensagem: 'Usuário criado!' });
+  });
+});
+
+// PRODUTOS
+app.get('/produtos', (req, res) => {
+  db.query('SELECT * FROM produtos', (error, results) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(results);
+  });
+});
+
+app.post('/produtos', (req, res) => {
+  const { nome, preco, estoque } = req.body;
+  const sql = 'INSERT INTO produtos (nome, preco, estoque) VALUES (?, ?, ?)';
+  db.query(sql, [nome, preco, estoque], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: result.insertId, mensagem: 'Produto criado!' });
+  });
+});
+
+app.put('/produtos/:id', (req, res) => {
+  const { id } = req.params;
+  const { nome, preco, estoque } = req.body;
+  const sql = 'UPDATE produtos SET nome = ?, preco = ?, estoque = ? WHERE id = ?';
+  db.query(sql, [nome, preco, estoque, id], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ mensagem: 'Produto atualizado!' });
+  });
+});
+
+app.delete('/produtos/:id', (req, res) => {
+  console.log('🗑️ DELETE chamado para ID:', req.params.id);
+  const { id } = req.params;
+  
+  db.query('DELETE FROM itens_pedido WHERE produto_id = ?', [id], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    console.log(`📦 ${result.affectedRows} itens removidos`);
+    
+    db.query('DELETE FROM produtos WHERE id = ?', [id], (error, result) => {
+      if (error) return res.status(500).json({ error: error.message });
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Produto não encontrado' });
+      }
+      console.log(`✅ Produto ${id} deletado!`);
+      res.json({ mensagem: 'Produto deletado com sucesso!' });
+    });
+  });
+});
+
+// PEDIDOS
+app.get('/pedidos', (req, res) => {
+  const sql = `SELECT p.*, u.nome as usuario_nome FROM pedidos p LEFT JOIN usuarios u ON p.usuario_id = u.id`;
+  db.query(sql, (error, results) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(results);
+  });
+});
+
+app.post('/pedidos', (req, res) => {
+  const { usuario_id, status } = req.body;
+  const sql = 'INSERT INTO pedidos (usuario_id, status) VALUES (?, ?)';
+  db.query(sql, [usuario_id, status || 'Pendente'], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: result.insertId, mensagem: 'Pedido criado!' });
+  });
+});
+
+// ITENS PEDIDO
+app.post('/itens-pedido', (req, res) => {
+  const { pedido_id, produto_id, quantidade, preco_unitario } = req.body;
+  const sql = 'INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?)';
+  db.query(sql, [pedido_id, produto_id, quantidade, preco_unitario], (error, result) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: result.insertId, mensagem: 'Item adicionado!' });
+  });
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`\n🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📋 ENDPOINTS ATIVOS:\n`);
+  console.log(`   GET  /usuarios`);
+  console.log(`   POST /usuarios`);
+  console.log(`   GET  /produtos`);
+  console.log(`   POST /produtos`);
+  console.log(`   PUT  /produtos/:id`);
+  console.log(`   DELETE /produtos/:id`);
+  console.log(`   GET  /pedidos`);
+  console.log(`   POST /pedidos`);
+  console.log(`   POST /itens-pedido\n`);
+});

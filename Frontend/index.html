@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Pedidos</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+    }
+
+    h1, h2 {
+      color: #38bdf8;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+    }
+
+    button {
+      background: #22c55e;
+      border: none;
+      padding: 10px;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛒 Produtos</h1>
+  <div id="produtos"></div>
+
+  <h2>📦 Criar Pedido</h2>
+  <button onclick="criarPedido()">Criar Pedido</button>
+
+  <h2>📋 Pedidos</h2>
+  <div id="pedidos"></div>
+
+  <script>
+    const API = 'http://localhost:3000';
+
+    async function carregarProdutos() {
+      const res = await fetch(API + '/produtos');
+      const produtos = await res.json();
+
+      const div = document.getElementById('produtos');
+      div.innerHTML = '';
+
+      produtos.forEach(p => {
+        div.innerHTML += `
+          <div class="card">
+            ${p.nome} - R$ ${p.preco}
+          </div>
+        `;
+      });
+    }
+
+    async function criarPedido() {
+      await fetch(API + '/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario_id: 1, status: 'PENDENTE' })
+      });
+
+      alert('Pedido criado!');
+      carregarPedidos();
+    }
+
+    async function carregarPedidos() {
+      const res = await fetch(API + '/pedidos');
+      const pedidos = await res.json();
+
+      const div = document.getElementById('pedidos');
+      div.innerHTML = '';
+
+      pedidos.forEach(p => {
+        div.innerHTML += `
+          <div class="card">
+            Pedido ${p.id} - ${p.status}
+          </div>
+        `;
+      });
+    }
+
+    carregarProdutos();
+    carregarPedidos();
+  </script>
+
+</body>
+</html>
